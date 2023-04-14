@@ -1,5 +1,5 @@
 """
-Author: Nate Bair
+Author: Sir Scrubs Alot
 Version: v1.1
 Python Version: 3.9.6
 Summary:
@@ -10,7 +10,7 @@ This script prompts the technician for several key pieces of information, before
 - Enables SNMP on the Local Network Interface
 - Enables SNMP Agent
 - Configures SNMP Community String on the Router and any Switches that would get connected to it
-- Creates USA Address and "Friendly Countries" Address Group
+- Creates BBQ&Guns Address and "Friendly Countries" Address Group
 - Creates a log file and dumps each command to it
 
 Additionas:
@@ -28,6 +28,7 @@ import datetime
 # Prompt Technician stating what they'll need to run the script
 print('Welcome to the New Fortigate Setup Script! \n Please have the following information ready:\n The WAN1 Public IP Address and Subnet Mask \n The ISP Gateway IP Address \n The IP Address of the Probe\Auvik Collector \n \n If your installing a phone system, you will also need to supply: \n The Public IP Address of the Allworx System \n The Private IP Address of the Allworx System \n Note: The Allworx Firewall Policy will use lan to wan1 by default \n')
 
+
 # Begin prompting technician for input
 fortigatehostname = input('Set the Hostname:\n')
 fortipassword = input('Please set the Fortigate Password:\n')
@@ -35,7 +36,7 @@ wan1publicip = input('Wan1 Public IP:\n')
 wan1subnet = input('Wan1 Subnet Mask:\n')
 ispgateway = input('ISP Gateway:\n')
 ipofauvikcollector = input('IP of Probe/Auvik Collector:\n')
-snmpdescription = input('SNMP Description (use format COMPANYNAME_FGTMODEL. EX: ECMSI_FGT60E):\n')
+snmpdescription = input('SNMP Description (use format COMPANYNAME_FGTMODEL. EX: COMPANYNAME_FGT60E):\n')
 rocommunitystring = input('SNMP Community String: \n')
 phonesystem = input('Are you installing a phone system? (y/n): \n')
 # lanip = input('lan IP:\n') (Current not in use)
@@ -46,8 +47,29 @@ if phonesystem == "y":
     allworxprivateip = input('Allworx Private IP:\n')
     # localnetworkinterface = input('Local Network Interface Name Example: lan):\n')
     localnetworkinterface = "lan"
-      
-    
+
+'''
+# Static Variables -- Used for quick testing
+# Begin prompting technician for input
+fortigatehostname = "TestHostname"
+fortipassword = "Password1"
+wan1publicip = "10.20.30.2"
+wan1subnet = "255.255.255.255"
+ispgateway = "10.20.30.1"
+ipofauvikcollector = "192.168.1.5"
+snmpdescription = "COMPANYNAME_FGT60E)"
+rocommunitystring = "testcommunitystring"
+phonesystem = "y"
+# lanip = input('lan IP:\n') (Current not in use)
+# lansubnet = input('lan Subnet Mask:\n') (Current not in use)
+
+if phonesystem == "y":
+    allworxpublicvip = "10.20.30.3"
+    allworxprivateip = "192.168.1.3"
+    # localnetworkinterface = input('Local Network Interface Name Example: lan):\n')
+    localnetworkinterface = "lan"
+
+'''
 lastchance = input('Would you like to proceed with these settings? hit enter for yes, CTRL-C to cancel)')
 
 # Variables for creating Log file
@@ -216,10 +238,10 @@ chan.send('\n')
 time.sleep(1)
 
 
-# Create USA Address
+# Create BBQ&Guns Address
 chan.send('config firewall address')
 chan.send('\n')
-chan.send('edit "USA"')
+chan.send('edit "BBQ&Guns"')
 chan.send('\n')
 chan.send('set type geography')
 chan.send('\n')
@@ -233,12 +255,12 @@ chan.send('end')
 chan.send('\n')
 time.sleep(1)
 
-# Create Friendly Countries Address Group and add USA to it
+# Create Friendly Countries Address Group and add BBQ&Guns to it
 chan.send('config firewall addrgrp')
 chan.send('\n')
 chan.send('edit "Friendly Countries"')
 chan.send('\n')
-chan.send('set member "USA"')
+chan.send('set member "BBQ&Guns"')
 chan.send('\n')
 chan.send('set color 3')
 chan.send('\n')
