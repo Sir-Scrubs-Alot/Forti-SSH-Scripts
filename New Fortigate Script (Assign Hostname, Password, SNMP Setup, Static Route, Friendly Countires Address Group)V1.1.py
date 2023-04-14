@@ -1,6 +1,6 @@
 """
 Author: Sir Scrubs Alot
-Version: v1.1
+Version: v1.2
 Python Version: 3.9.6
 Summary:
 This script prompts the technician for several key pieces of information, before performing the following:
@@ -12,10 +12,13 @@ This script prompts the technician for several key pieces of information, before
 - Configures SNMP Community String on the Router and any Switches that would get connected to it
 - Creates BBQ&Guns Address and "Friendly Countries" Address Group
 - Creates a log file and dumps each command to it
-
-Additionas:
 - Prompt tech if they're installing a phone system, if y is input then they will be prompted for Allworx information, and the script will create the allworx VIP's and Policy. Note: It defaults to using 'lan' in the policy.
 - Cleaned up the top comment output to the technician
+
+Modifications:
+- The script was calling "lan" in several spots instead of the variable localnetworkinterface
+- It now queries for the internal lan by its ip 192.168.1.99
+- In doing so, the top half of the log file got cut off since it breaks the data stream. I added the variable input_values and added it to the top of the log file that gets created
 """
 
 import paramiko
@@ -23,12 +26,13 @@ import cmd
 import time
 import sys
 import datetime
+import re
 
 
 # Prompt Technician stating what they'll need to run the script
 print('Welcome to the New Fortigate Setup Script! \n Please have the following information ready:\n The WAN1 Public IP Address and Subnet Mask \n The ISP Gateway IP Address \n The IP Address of the Probe\Auvik Collector \n \n If your installing a phone system, you will also need to supply: \n The Public IP Address of the Allworx System \n The Private IP Address of the Allworx System \n Note: The Allworx Firewall Policy will use lan to wan1 by default \n')
 
-
+'''
 # Begin prompting technician for input
 fortigatehostname = input('Set the Hostname:\n')
 fortipassword = input('Please set the Fortigate Password:\n')
@@ -39,6 +43,7 @@ ipofauvikcollector = input('IP of Probe/Auvik Collector:\n')
 snmpdescription = input('SNMP Description (use format COMPANYNAME_FGTMODEL. EX: COMPANYNAME_FGT60E):\n')
 rocommunitystring = input('SNMP Community String: \n')
 phonesystem = input('Are you installing a phone system? (y/n): \n')
+
 # lanip = input('lan IP:\n') (Current not in use)
 # lansubnet = input('lan Subnet Mask:\n') (Current not in use)
 
@@ -46,9 +51,8 @@ if phonesystem == "y":
     allworxpublicvip = input('Allworx Public IP:\n')
     allworxprivateip = input('Allworx Private IP:\n')
     # localnetworkinterface = input('Local Network Interface Name Example: lan):\n')
-    localnetworkinterface = "lan"
-
 '''
+
 # Static Variables -- Used for quick testing
 # Begin prompting technician for input
 fortigatehostname = "TestHostname"
@@ -57,7 +61,7 @@ wan1publicip = "10.20.30.2"
 wan1subnet = "255.255.255.255"
 ispgateway = "10.20.30.1"
 ipofauvikcollector = "192.168.1.5"
-snmpdescription = "COMPANYNAME_FGT60E)"
+snmpdescription = "COMPANYNAME_FGT60E"
 rocommunitystring = "testcommunitystring"
 phonesystem = "y"
 # lanip = input('lan IP:\n') (Current not in use)
@@ -67,9 +71,10 @@ if phonesystem == "y":
     allworxpublicvip = "10.20.30.3"
     allworxprivateip = "192.168.1.3"
     # localnetworkinterface = input('Local Network Interface Name Example: lan):\n')
-    localnetworkinterface = "lan"
 
-'''
+# Create Variable containing the input values. This will be added to the top of the log file.
+input_values = f"fortigatehostname = {fortigatehostname}\nfortipassword = {fortipassword}\nwan1publicip = {wan1publicip}\nwan1subnet = {wan1subnet}\nispgateway = {ispgateway}\nipofauvikcollector = {ipofauvikcollector}\nsnmpdescription = {snmpdescription}\nrocommunitystring = {rocommunitystring}\nphonesystem = {phonesystem}\n\n"
+
 lastchance = input('Would you like to proceed with these settings? hit enter for yes, CTRL-C to cancel)')
 
 # Variables for creating Log file
@@ -80,6 +85,7 @@ log_name_with_quotes = f'"{log_name}"'
 buff = ''
 resp = ''
 
+# Login using SSH, the default Fortigate IP Address, the default username and no password
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect('192.168.1.99', username='admin', password='')
@@ -89,8 +95,9 @@ chan = ssh.invoke_shell()
 # turn off paging
 chan.send('terminal length 0\n')
 time.sleep(1)
-resp = chan.recv(9999)
+resp = chan.recv(99999)
 output = resp.decode('ascii').split(',')
+
 
 # Assign Hostname and Password to the Fortigate
 time.sleep(1)
@@ -109,6 +116,31 @@ chan.send('end')
 chan.send('\n')
 time.sleep(1)
 
+
+# FIND THE DEFAULT INTERNAL INTERFACE NAME
+
+# Grep for internal interface on the fortigate
+chan.send('get system interface | grep 192.168.1.99\n')
+time.sleep(3)
+
+# Output the bytes to a variable
+if chan.recv_ready():
+    intoutput = chan.recv(5000)
+
+# Convert the variable to a string
+outputstring = str(intoutput)
+
+# Search for the internal interface name found between name and mode
+m = re.search('name: (.+?)   mode:', outputstring)
+if m:
+    found = m.group(1)
+    localnetworkinterface = found
+else:
+    print("Internal Interface Name not Found")
+    print("ABORTING SCRIPT")
+    sys.exit()
+
+    
 # Assign IP and Subnet to Wan1
 chan.send('config system interface')
 chan.send('\n')
@@ -146,7 +178,7 @@ time.sleep(1)
 # Enable SNMP on Local Network Interface
 chan.send('config system interface')
 chan.send('\n')
-chan.send('edit "lan"')
+chan.send('edit ' + localnetworkinterface)
 chan.send('\n')
 chan.send('set allowaccess ping https ssh snmp http fgfm fabric')
 chan.send('\n')
@@ -488,10 +520,17 @@ if phonesystem == "y":
     chan.send('\n')
     time.sleep(1)
 
+# Save all of the recieved bytes to a variable
 resp = chan.recv(99999)
+
+# Decode the byte-like object into a string object, split it into a comma seperated string, then join the string variable. Output the results into IDLE
 output = resp.decode('ascii').split(',')
 print (''.join(output))
+
+
+# Safe the decoded string into the text file
 with open(log_name, "w") as external_file:
+    external_file.write(input_values)
     print ((''.join(output)), file=external_file)
     external_file.close()
 
@@ -532,5 +571,4 @@ SUBLIME:
 https://stackoverflow.com/questions/39556514/sublime-text-3-how-to-edit-multiple-lines
 https://gist.github.com/martincr/34f4fa08f6924512487d5b683c4fe800
 '''
-
 
