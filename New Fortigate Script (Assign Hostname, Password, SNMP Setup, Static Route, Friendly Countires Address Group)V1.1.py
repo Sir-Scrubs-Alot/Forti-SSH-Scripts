@@ -1,6 +1,6 @@
 """
 Author: Sir Scrubs Alot
-Version: v1.2
+Version: v1.3
 Python Version: 3.9.6
 Summary:
 This script prompts the technician for several key pieces of information, before performing the following:
@@ -13,12 +13,10 @@ This script prompts the technician for several key pieces of information, before
 - Creates BBQ&Guns Address and "Friendly Countries" Address Group
 - Creates a log file and dumps each command to it
 - Prompt tech if they're installing a phone system, if y is input then they will be prompted for Allworx information, and the script will create the allworx VIP's and Policy. Note: It defaults to using 'lan' in the policy.
-- Cleaned up the top comment output to the technician
+- IF installing a phone system, then sip alg will also be disabled
 
 Modifications:
-- The script was calling "lan" in several spots instead of the variable localnetworkinterface
-- It now queries for the internal lan by its ip 192.168.1.99
-- In doing so, the top half of the log file got cut off since it breaks the data stream. I added the variable input_values and added it to the top of the log file that gets created
+- Added logic to disable sip alg
 """
 
 import paramiko
@@ -520,6 +518,9 @@ if phonesystem == "y":
     chan.send('\n')
     time.sleep(1)
 
+
+
+    
 # Save all of the recieved bytes to a variable
 resp = chan.recv(99999)
 
@@ -534,6 +535,76 @@ with open(log_name, "w") as external_file:
     print ((''.join(output)), file=external_file)
     external_file.close()
 
+
+# Disable Sip ALG. Need to do this after the output has already been put onto the log file, then append to said log file. 
+if phonesystem == "y":
+    # Get the sip alg edit number
+    chan.send('config system console')
+    chan.send('\n')
+    chan.send('set output standard')
+    chan.send('\n')
+    chan.send('end')
+    chan.send('\n')
+    chan.send('config system session-helper')
+    chan.send('\n')
+    chan.send('show\n')
+    chan.send('\n')
+    chan.send('end')
+    chan.send('\n')
+    time.sleep(2)
+
+    # Output the bytes to a variable
+    if chan.recv_ready():
+        sipoutput = chan.recv(5000)
+
+    # Convert the byte string to a regular string
+    output_string = sipoutput.decode()
+
+    # Find the index of the last occurrence of "edit" before "sip"
+    index = output_string.rfind("edit", 0, output_string.find("sip"))
+
+    # Extract the edit number
+    sipgalgnumber = output_string[index+5:output_string.find("\r\n", index)]
+
+    print(sipgalgnumber)
+    
+
+    # Remove the session helper
+    chan.send('config system session-helper')
+    chan.send('\n')
+    chan.send('delete ' + sipgalgnumber)
+    chan.send('\n')
+    chan.send('end')
+    chan.send('\n')
+    time.sleep(1)
+    
+
+    # Change the default -voip -alg-mode
+    chan.send('config system settings')
+    chan.send('\n')
+    chan.send('set default-voip-alg-mode kernel-helper-based')
+    chan.send('\n')
+    chan.send('set sip-expectation disable')
+    chan.send('\n')
+    chan.send('set sip-nat-trace disable')
+    chan.send('\n')
+    chan.send('end')
+    chan.send('\n')
+    time.sleep(1)
+
+    # Save all of the recieved bytes to a variable
+    resp = chan.recv(99999)
+
+    # Decode the byte-like object into a string object, split it into a comma seperated string, then join the string variable. Output the results into IDLE
+    output = resp.decode('ascii').split(',')
+    print (''.join(output))
+
+
+    # Safe the decoded string into the text file
+    with open(log_name, "a") as external_file:
+        print ((''.join(output)), file=external_file)
+        external_file.close()
+        
 '''
 # Assign IP and Subnet to lan (Current not in use)
 chan.send('config system interface')
