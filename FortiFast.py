@@ -4,6 +4,7 @@ import time
 import sys
 import datetime
 import re
+import random
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 
@@ -12,8 +13,9 @@ customtkinter.set_default_color_theme("dark-blue")
 
 root = customtkinter.CTk()
 root.geometry("500x760")
+root.title("Forti-Freaking-Awesome-Scripting-Tool")
 
-def login():
+def launch():
     try:
         # Code to be executed when the button is clicked
         fortigatehostname = fortigatehostname_entry.get()
@@ -613,15 +615,30 @@ def login():
 def phonesystemthing():
     print(phonesystem)
 
+
+
 frame = customtkinter.CTkFrame(master=root)
 frame.pack(pady=20, padx=60, fill="both", expand=True)
 
-label = customtkinter.CTkLabel(master=frame, text="FortiFAST", font=("Roboto", 24))
-label.pack(pady=12, padx=10)
+label = customtkinter.CTkLabel(master=frame, text="FortiFAST", font=("Roboto", 24, "bold"))
+label.pack(pady=5, padx=5)
 
+numberAtRandom = (random.randint(1,3))
+if numberAtRandom == 1:
+    funQuote = '"Mawage is wot bwings us together today"'
 
+if numberAtRandom == 2:
+    funQuote = '"Its a One-Off"'
+    
+if numberAtRandom == 3:
+    funQuote = '"Not-Your-Fathers-Executable"'
 
-fortigatehostname_label = customtkinter.CTkLabel(master=frame,text="Enter Hostname:",font=("Roboto", 16))
+my_font = customtkinter.CTkFont(family="Roboto", size=12, slant="italic")
+
+TopMessage = customtkinter.CTkLabel(master=frame,text=funQuote,font=my_font)
+TopMessage.pack(pady=5, padx=5)
+
+fortigatehostname_label = customtkinter.CTkLabel(master=frame,text="Set Hostname:",font=("Roboto", 16))
 fortigatehostname_label.place(x=10, y=100)
 
 fortigatehostname_entry = customtkinter.CTkEntry(master=frame, placeholder_text="EX: ECMSI_FGT60F")
@@ -630,7 +647,7 @@ fortigatehostname_entry.place(x=160, y=100)
 
 
 
-fortipassword_label = customtkinter.CTkLabel(master=frame,text="Enter Password:",font=("Roboto", 16))
+fortipassword_label = customtkinter.CTkLabel(master=frame,text="Set Password:",font=("Roboto", 16))
 fortipassword_label.place(x=10, y=150)
 
 fortipassword_entry = customtkinter.CTkEntry(master=frame, placeholder_text="")
@@ -700,7 +717,7 @@ allworxprivateip_entry.place(x=160, y=600)
 
 
 
-button = customtkinter.CTkButton(master=frame, text="Zoom!", font=("Roboto", 16), command=login)
+button = customtkinter.CTkButton(master=frame, text="Launch", font=("Roboto", 16), command=launch)
 button.pack(side=customtkinter.BOTTOM, padx=10,  pady=10)
 
 
